@@ -224,9 +224,15 @@ func Wait(l net.Listener) (syscall.Signal, error) {
 		case syscall.SIGQUIT:
 			return syscall.SIGQUIT, nil
 
-		// SIGTERM should exit.
+		// SIGTERM should behave like SIGUSR2.
 		case syscall.SIGTERM:
-			return syscall.SIGTERM, nil
+			if forked {
+				return syscall.SIGUSR2, nil
+			}
+			forked = true
+			if err := ForkExec(l); nil != err {
+				return syscall.SIGUSR2, err
+			}
 
 		// SIGUSR1 should reopen logs.
 		case syscall.SIGUSR1:
