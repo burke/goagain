@@ -35,11 +35,6 @@ const (
 )
 
 var (
-	// OnSIGHUP is the function called when the server receives a SIGHUP
-	// signal. The normal use case for SIGHUP is to reload the
-	// configuration.
-	OnSIGHUP func(l net.Listener) error
-
 	// OnSIGUSR1 is the function called when the server receives a
 	// SIGUSR1 signal. The normal use case for SIGUSR1 is to repon the
 	// log files.
@@ -208,12 +203,14 @@ func Wait(l net.Listener) (syscall.Signal, error) {
 		log.Println(sig.String())
 		switch sig {
 
-		// SIGHUP should reload configuration.
+		// SIGHUP should behave like SIGUSR2.
 		case syscall.SIGHUP:
-			if nil != OnSIGHUP {
-				if err := OnSIGHUP(l); nil != err {
-					log.Println("OnSIGHUP:", err)
-				}
+			if forked {
+				return syscall.SIGUSR2, nil
+			}
+			forked = true
+			if err := ForkExec(l); nil != err {
+				return syscall.SIGUSR2, err
 			}
 
 		// SIGINT should exit.
